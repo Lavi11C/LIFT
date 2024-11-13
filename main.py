@@ -20,6 +20,7 @@ def main(args):
     cfg.merge_from_list(args.opts)
     # cfg.freeze()
 
+    # output file setting
     if cfg.output_dir is None:
         cfg_name = "_".join([args.data, args.model])
         opts_name = "".join(["_" + item for item in args.opts])
@@ -33,6 +34,7 @@ def main(args):
     print(cfg)
     print("************")
     
+    # seed setting -> 確保結果一致
     if cfg.seed is not None:
         seed = cfg.seed
         print("Setting fixed seed: {}".format(seed))
@@ -52,13 +54,16 @@ def main(args):
 
     trainer = Trainer(cfg)
     
+    # 檢查是某指定了一個已訓練的模型路徑 -> 搭配以下使用
     if cfg.model_dir is not None:
         trainer.load_model(cfg.model_dir)
     
+    # 評估模型的零樣本性能
     if cfg.zero_shot:
         trainer.test()
         return
 
+    # 在訓練集上測試模型(判斷是否過度擬合)
     if cfg.test_train == True:
         if cfg.model_dir is None:
             cfg.model_dir = cfg.output_dir[:cfg.output_dir.index("_test_train_True")]
@@ -68,6 +73,7 @@ def main(args):
         trainer.test("train")
         return
 
+    # 在測試集上測試模型(判斷泛化能力)
     if cfg.test_only == True:
         if cfg.model_dir is None:
             cfg.model_dir = cfg.output_dir[:cfg.output_dir.index("_test_only_True")]
@@ -87,3 +93,4 @@ if __name__ == "__main__":
                         help="modify config options using the command-line")
     args = parser.parse_args()
     main(args)
+    

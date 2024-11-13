@@ -27,9 +27,9 @@ from utils.losses import *
 from utils.evaluator import Evaluator
 from utils.templates import ZEROSHOT_TEMPLATES
 
-
+# 加載CLIP模型
 def load_clip_to_cpu(backbone_name, prec):
-    backbone_name = backbone_name.lstrip("CLIP-")
+    backbone_name = backbone_name.lstrip("CLIP-") # 將backbone_name字符串中開頭的"CLIP-"字樣去掉
     url = clip._MODELS[backbone_name]
     model_path = clip._download(url)
 
@@ -50,7 +50,7 @@ def load_clip_to_cpu(backbone_name, prec):
 
     return model
 
-
+# 加載ViT模型
 def load_vit_to_cpu(backbone_name, prec):
     if backbone_name == "IN21K-ViT-B/16":
         model = vit_base_patch16_224(pretrained=True).eval()
@@ -71,23 +71,23 @@ class Trainer:
     def __init__(self, cfg):
 
         if not torch.cuda.is_available():
-            self.device = torch.device("cpu")
+            self.device = torch.device("cpu") 
         elif cfg.gpu is None:
-            self.device = torch.device("cuda")
+            self.device = torch.device("cuda") # 默認選擇第一個GPU
         else:
             torch.cuda.set_device(cfg.gpu)
-            self.device = torch.device("cuda:{}".format(cfg.gpu))
+            self.device = torch.device("cuda:{}".format(cfg.gpu)) # 使用指定的GPU
 
         self.cfg = cfg
         self.build_data_loader()
         self.build_model()
-        self.evaluator = Evaluator(cfg, self.many_idxs, self.med_idxs, self.few_idxs)
-        self._writer = None
+        self.evaluator = Evaluator(cfg, self.many_idxs, self.med_idxs, self.few_idxs) # 評估不同頻次類別的索引
+        self._writer = None # 初始化tensorboard
 
     def build_data_loader(self):
         cfg = self.cfg
-        root = cfg.root
-        resolution = cfg.resolution
+        root = cfg.root # 資料集根目錄
+        resolution = cfg.resolution # 圖像解析度或尺寸
         expand = cfg.expand
 
         if cfg.backbone.startswith("CLIP"):
@@ -113,7 +113,7 @@ class Trainer:
             transforms.Normalize(mean, std),
         ])
 
-        if cfg.tte:
+        if cfg.tte: # 提高模型對圖像的泛化能力和準確率
             if cfg.tte_mode == "fivecrop":
                 transform_test = transforms.Compose([
                     transforms.Resize(resolution + expand),
@@ -148,22 +148,25 @@ class Trainer:
 
         train_dataset = getattr(datasets, cfg.dataset)(root, train=True, transform=transform_train)
         train_init_dataset = getattr(datasets, cfg.dataset)(root, train=True, transform=transform_plain)
-        train_test_dataset = getattr(datasets, cfg.dataset)(root, train=True, transform=transform_test)
+        train_test_dataset = getattr(datasets, cfg.dataset)(root, train=True, transform=transform_test) # validation
         test_dataset = getattr(datasets, cfg.dataset)(root, train=False, transform=transform_test)
 
-        self.num_classes = train_dataset.num_classes
-        self.cls_num_list = train_dataset.cls_num_list
-        self.classnames = train_dataset.classnames
+        self.num_classes = train_dataset.num_classes # 存儲數據集的類別總數
+        self.cls_num_list = train_dataset.cls_num_list # 存儲每個類別的樣本數
+        self.classnames = train_dataset.classnames # 存儲每個類別的名稱
 
         if cfg.dataset in ["CIFAR100", "CIFAR100_IR10", "CIFAR100_IR50"]:
             split_cls_num_list = datasets.CIFAR100_IR100(root, train=True).cls_num_list
         else:
             split_cls_num_list = self.cls_num_list
+
+        # 依數量劃分為多樣本、中樣本、少樣本    
         self.many_idxs = (np.array(split_cls_num_list) > 100).nonzero()[0]
         self.med_idxs = ((np.array(split_cls_num_list) >= 20) & (np.array(split_cls_num_list) <= 100)).nonzero()[0]
         self.few_idxs = (np.array(split_cls_num_list) < 20).nonzero()[0]
 
-        if cfg.init_head == "1_shot":
+        # 訓練的早期階段從每個類別中選取少量樣本進行初始化，確保每個類別都能獲得一定的學習機會
+        if cfg.init_head == "1_shot": # 每個類別選擇一個樣本，以此類推
             init_sampler = DownSampler(train_init_dataset, n_max=1)
         elif cfg.init_head == "10_shot":
             init_sampler = DownSampler(train_init_dataset, n_max=10)
@@ -176,6 +179,7 @@ class Trainer:
             batch_size=cfg.micro_batch_size, shuffle=True,
             num_workers=cfg.num_workers, pin_memory=True)
 
+        # 少樣本使用
         self.train_init_loader = DataLoader(train_init_dataset,
             batch_size=64, sampler=init_sampler, shuffle=False,
             num_workers=cfg.num_workers, pin_memory=True)
@@ -188,6 +192,7 @@ class Trainer:
             batch_size=64, shuffle=False,
             num_workers=cfg.num_workers, pin_memory=True)
         
+        # 確保 cfg.batch_size 是 cfg.micro_batch_size 的整數倍
         assert cfg.batch_size % cfg.micro_batch_size == 0
         self.accum_step = cfg.batch_size // cfg.micro_batch_size
 
@@ -200,8 +205,10 @@ class Trainer:
         num_classes = len(classnames)
 
         print("Building model")
+
+        # 零樣本模式
         if cfg.zero_shot:
-            assert cfg.backbone.startswith("CLIP")
+            assert cfg.backbone.startswith("CLIP") # 強制backbone使用CLIP
             print(f"Loading CLIP (backbone: {cfg.backbone})")
             clip_model = load_clip_to_cpu(cfg.backbone, cfg.prec)
             self.model = ZeroShotCLIP(clip_model)
@@ -213,18 +220,20 @@ class Trainer:
             prompts = self.get_tokenized_prompts(classnames, template)
             self.model.init_text_features(prompts)
 
+        # CLIP
         elif cfg.backbone.startswith("CLIP"):
             print(f"Loading CLIP (backbone: {cfg.backbone})")
             clip_model = load_clip_to_cpu(cfg.backbone, cfg.prec)
-            self.model = PeftModelFromCLIP(cfg, clip_model, num_classes)
+            self.model = PeftModelFromCLIP(cfg, clip_model, num_classes) # 將其設置為可調參數模型
             self.model.to(self.device)
             self.tuner = self.model.tuner
             self.head = self.model.head
 
+        # ViT
         elif cfg.backbone.startswith("IN21K-ViT"):
             print(f"Loading ViT (backbone: {cfg.backbone})")
             vit_model = load_vit_to_cpu(cfg.backbone, cfg.prec)
-            self.model = PeftModelFromViT(cfg, vit_model, num_classes)
+            self.model = PeftModelFromViT(cfg, vit_model, num_classes) # 將其設置為可調參數模型
             self.model.to(self.device)
             self.tuner = self.model.tuner
             self.head = self.model.head
@@ -256,7 +265,7 @@ class Trainer:
 
         print("Turning off gradients in the model")
         for name, param in self.model.named_parameters():
-            param.requires_grad_(False)
+            param.requires_grad_(False) # 模型主體的參數在訓練過程中被凍結
         print("Turning on gradients in the tuner")
         for name, param in self.tuner.named_parameters():
             param.requires_grad_(True)
@@ -274,13 +283,14 @@ class Trainer:
         # for name, param in self.tuner.named_parameters():
         #     print(name, param.numel())
 
-        # NOTE: only give tuner and head to the optimizer
+        # NOTE: 僅優化tuner & head
         self.optim = torch.optim.SGD([{"params": self.tuner.parameters()},
                                       {"params": self.head.parameters()}],
                                       lr=cfg.lr, weight_decay=cfg.weight_decay, momentum=cfg.momentum)
         self.sched = torch.optim.lr_scheduler.CosineAnnealingLR(self.optim, cfg.num_epochs)
         self.scaler = GradScaler() if cfg.prec == "amp" else None
 
+    # 損失函數
     def build_criterion(self):
         cfg = self.cfg
         cls_num_list = torch.Tensor(self.cls_num_list).to(self.device)
@@ -301,7 +311,8 @@ class Trainer:
             self.criterion = LogitAdjustedLoss(cls_num_list=cls_num_list)
         elif cfg.loss_type == "LADE": # https://arxiv.org/abs/2012.00321
             self.criterion = LADELoss(cls_num_list=cls_num_list)
-        
+
+    # 生成並標記每個類別名稱的文本提示->使模型在沒有具體訓練數據的情況下進行推理
     def get_tokenized_prompts(self, classnames, template):
         prompts = [template.format(c.replace("_", " ")) for c in classnames]
         # print(f"Prompts: {prompts}")
@@ -309,12 +320,15 @@ class Trainer:
         prompts = prompts.to(self.device)
         return prompts
 
-    @torch.no_grad()
+    # NOTE: 以下三種方式都是為了初始化分類頭(head)
+    @torch.no_grad() # 關閉自動微分，避免計算過程中產生梯度
     def init_head_text_feat(self):
         cfg = self.cfg
         classnames = self.classnames
 
         print("Initialize head with text features")
+
+        # 根據prompt使用不同的文本提示策略
         if cfg.prompt == "ensemble":
             all_text_features = []
             for template in tqdm(ZEROSHOT_TEMPLATES['imagenet']):
@@ -352,6 +366,7 @@ class Trainer:
 
         self.head.apply_weight(text_features)
 
+    # 使用每個類別的特徵均值來初始化分類頭（head）->提升模型在不同類別上的分類效果
     @torch.no_grad()
     def init_head_class_mean(self):
         print("Initialize head with class means")
@@ -377,6 +392,7 @@ class Trainer:
         all_features = all_features[sorted_index]
         all_labels = all_labels[sorted_index]
 
+        # 計算每個類別的均值特徵
         unique_labels, label_counts = torch.unique(all_labels, return_counts=True)
 
         class_means = [None] * self.num_classes
@@ -407,6 +423,7 @@ class Trainer:
             all_features.append(feature)
             all_labels.append(label)
 
+        # LogisticRegression 在 CPU 上進行
         all_features = torch.cat(all_features, dim=0).cpu()
         all_labels = torch.cat(all_labels, dim=0).cpu()
 

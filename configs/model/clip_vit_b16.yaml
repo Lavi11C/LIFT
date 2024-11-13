@@ -7,7 +7,7 @@ print_freq: 10
 seed: 0
 deterministic: True
 gpu: 0
-num_workers: 8
+num_workers: 0
 prec: "amp"
 
 num_epochs: 10

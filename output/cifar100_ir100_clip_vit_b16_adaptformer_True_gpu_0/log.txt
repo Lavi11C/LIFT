@@ -1,0 +1,72 @@
+** Config **
+adapter: False
+adapter_dim: None
+adaptformer: True
+adaptformer_scale: learnable
+backbone: CLIP-ViT-B/16
+batch_size: 128
+bias_tuning: False
+bn_tuning: False
+classifier: CosineClassifier
+dataset: CIFAR100_IR100
+deterministic: True
+expand: 24
+full_tuning: False
+gpu: 0
+imb_factor: None
+init_head: text_feat
+ln_tuning: False
+lora: False
+lora_mlp: False
+loss_type: LA
+lr: 0.01
+mask: False
+mask_ratio: None
+mask_seed: None
+micro_batch_size: 128
+model_dir: None
+momentum: 0.9
+num_epochs: 10
+num_workers: 8
+output_dir: ./output/cifar100_ir100_clip_vit_b16_adaptformer_True_gpu_0
+partial: None
+prec: amp
+print_freq: 10
+prompt: default
+randaug_times: 1
+resolution: 224
+root: ./data
+scale: 25
+seed: 0
+ssf_attn: False
+ssf_ln: False
+ssf_mlp: False
+test_only: False
+test_train: False
+tte: False
+tte_mode: fivecrop
+vpt_deep: False
+vpt_len: None
+vpt_shallow: False
+weight_decay: 0.0005
+zero_shot: False
+************
+Setting fixed seed: 0
+mean: [0.48145466, 0.4578275, 0.40821073]
+std: [0.26862954, 0.26130258, 0.27577711]
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+Total training points: 10847
+Building model
+Loading CLIP (backbone: CLIP-ViT-B/16)
+Adapter bottle dimension set to 4
+Turning off gradients in the model
+Turning on gradients in the tuner
+Turning on gradients in the head
+Total params: 149798972
+Tuned params: 101436
+Head params: 76800
+Initialize head with text features
+Initialize tensorboard (log_dir=./output/cifar100_ir100_clip_vit_b16_adaptformer_True_gpu_0/tensorboard)
