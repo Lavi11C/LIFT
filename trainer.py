@@ -436,7 +436,7 @@ class Trainer:
     def train(self):
         cfg = self.cfg
 
-        # Initialize summary writer
+        # Initialize summary writer(Tensorboard)
         writer_dir = os.path.join(cfg.output_dir, "tensorboard")
         os.makedirs(writer_dir, exist_ok=True)
         print(f"Initialize tensorboard (log_dir={writer_dir})")
@@ -527,6 +527,7 @@ class Trainer:
                     info += [f"eta {eta}"]
                     print(" ".join(info))
 
+                # 紀錄訓練數據到Tensorboard
                 n_iter = epoch_idx * num_batches + batch_idx
                 self._writer.add_scalar("train/lr", current_lr, n_iter)
                 self._writer.add_scalar("train/loss.val", loss_meter.val, n_iter)
@@ -540,6 +541,7 @@ class Trainer:
                 
                 end = time.time()
 
+            # 根據策略更新學習率調度器學習率
             self.sched.step()
             torch.cuda.empty_cache()
 
@@ -582,6 +584,7 @@ class Trainer:
             image = image.to(self.device)
             label = label.to(self.device)
 
+            # 多視角（multi-crop）評估處理
             _bsz, _ncrops, _c, _h, _w = image.size()
             image = image.view(_bsz * _ncrops, _c, _h, _w)
 
@@ -630,6 +633,7 @@ class Trainer:
         torch.save(checkpoint, save_path)
         print(f"Checkpoint saved to {save_path}")
 
+    # 恢復之前保存的模型權重，繼續進行訓練或進行推理->避免意外用
     def load_model(self, directory):
         load_path = os.path.join(directory, "checkpoint.pth.tar")
 
