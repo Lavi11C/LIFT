@@ -97,11 +97,11 @@ def parse_arguments():
         type=int,
         default=20,
     )
-    parser.add_argument(
-        "--seed",
-        type=int,
-        default=99,
-    )
+    # parser.add_argument(
+    #     "--seed",
+    #     type=int,
+    #     default=99,
+    # )
     parser.add_argument(
         "--denoiser",
         type=int,
