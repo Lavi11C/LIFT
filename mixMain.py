@@ -7,7 +7,7 @@ import torch
 from utils.config import _C as cfg
 from utils.logger import setup_logger
 
-from trainer import Trainer
+from mixTrainer import Trainer
 
 import copy
 from args import parse_arguments # 搭配args.py使用
