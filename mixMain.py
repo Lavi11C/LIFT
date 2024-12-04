@@ -112,7 +112,7 @@ def main():
     for i in range(0, 15):
         # print("------------------------Epoch {}--------------------".format(i))
         trainer.train_epoch(1.0, args.seed) # 1.0 表示每個batch都會被訓練
-        fopen.write("Main Trainer {} sparsity : {:.4} % and performance : {}\n".format(i, trainer.pruner.get_sparsity_ratio(), trainer.evaluate_model()))
+        fopen.write("Main Trainer {} sparsity : {:.4} % and performance : {}\n".format(i, trainer.pruner.get_sparsity_ratio(), trainer.test()))
         #E.g., Main Trainer 1 sparsity : 0.2345 % and performance : {'accuracy': 0.85}
 
         current_sparsity = trainer.pruner.get_sparsity_ratio()
@@ -151,7 +151,7 @@ def main():
     print("=>>>>>>>>>>>>>>>>Final sparsity : {} %".format(trainer.pruner.get_sparsity_ratio()))
     for i in range(0, 15):
         trainer.train_epoch(1.0, args.seed)
-        res = trainer.evaluate_model() # 評估模型
+        res = trainer.test() # 評估模型
         fopen.write("Main Trainer {} sparsity : {:.4} % and performance : {}\n".format(i, trainer.pruner.get_sparsity_ratio(), res))
         fopen.flush()
         max_log.append(res["top1"])
