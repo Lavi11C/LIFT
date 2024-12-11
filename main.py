@@ -54,7 +54,6 @@ def main(args):
 
     trainer = Trainer(cfg)
     
-    # 檢查是某指定了一個已訓練的模型路徑 -> 搭配以下使用
     if cfg.model_dir is not None:
         trainer.load_model(cfg.model_dir)
     
