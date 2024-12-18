@@ -27,6 +27,8 @@ from utils.losses import *
 from utils.evaluator import Evaluator
 from utils.templates import ZEROSHOT_TEMPLATES
 
+from torchsummary import summary  # 引入 torchsummary
+
 # 加載CLIP模型
 def load_clip_to_cpu(backbone_name, prec):
     backbone_name = backbone_name.lstrip("CLIP-") # 將backbone_name字符串中開頭的"CLIP-"字樣去掉
@@ -435,6 +437,9 @@ class Trainer:
 
     def train(self):
         cfg = self.cfg
+        # 打印模型摘要
+        print("\nModel Summary:")
+        summary(self.model, input_size=(3, cfg.resolution, cfg.resolution))
 
         # Initialize summary writer(Tensorboard)
         writer_dir = os.path.join(cfg.output_dir, "tensorboard")
@@ -556,6 +561,14 @@ class Trainer:
 
         # save model
         self.save_model(cfg.output_dir)
+
+        # 打印模型摘要
+        # print("\nModel Summary:")
+        # summary(self.model, input_size=(3, cfg.resolution, cfg.resolution))
+    
+        # 打印優化器
+        print("\nOptimizer Info:")
+        print(self.optim)
 
         self.test()
 
